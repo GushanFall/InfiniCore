@@ -3,6 +3,7 @@ import ctypes
 import math
 import sys
 import os
+import time
 
 from regex import F
 
@@ -148,7 +149,10 @@ def test(
             )
         )
 
+    start_time = time.perf_counter()
     lib_attention()
+    end_time = time.perf_counter()
+    print(f" - Execution time : {end_time - start_time:.6f} seconds")
 
     # Validate results
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
