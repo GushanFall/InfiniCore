@@ -3,6 +3,7 @@ import ctypes
 import math
 import sys
 import os
+import time
 
 from regex import F
 
@@ -148,7 +149,10 @@ def test(
             )
         )
 
+    start_time = time.perf_counter()
     lib_attention()
+    end_time = time.perf_counter()
+    print(f" - Execution time : {end_time - start_time:.6f} seconds")
 
     # Validate results
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
@@ -180,19 +184,19 @@ if __name__ == "__main__":
     NUM_ITERATIONS = 1000
     test_cases = [
         # basic
-        # (
-        #     (1, 256, 32, 64),
-        #     (1, 256, 32, 64),
-        #     (1, 500, 4, 64),
-        #     (1, 500, 4, 64),
-        # ),
+        (
+            (1, 256, 32, 64),
+            (1, 256, 32, 64),
+            (1, 500, 4, 64),
+            (1, 500, 4, 64),
+        ),
         # prefill
-        # (
-        #     (5, 32, 64),
-        #     (5, 32, 64),
-        #     (5, 4, 64),
-        #     (5, 4, 64),
-        # ),
+        (
+            (5, 32, 64),
+            (5, 32, 64),
+            (5, 4, 64),
+            (5, 4, 64),
+        ),
         (
             (15, 28, 128),
             (15, 28, 128),
@@ -200,12 +204,12 @@ if __name__ == "__main__":
             (15, 28, 128),
         ),
         # decode
-        # (
-        #     (1, 32, 64),
-        #     (1, 32, 64),
-        #     (5, 4, 64),
-        #     (5, 4, 64),
-        # ),
+        (
+            (1, 32, 64),
+            (1, 32, 64),
+            (5, 4, 64),
+            (5, 4, 64),
+        ),
     ]
     args = get_args()
     lib = open_lib()
@@ -251,6 +255,9 @@ if __name__ == "__main__":
     NUM_ITERATIONS = args.num_iterations
 
     # Execute tests
+    start_time = time.perf_counter()
     for device in get_test_devices(args):
         test_operator(lib, device, test, test_cases, _TENSOR_DTYPES)
+    end_time = time.perf_counter()
     print("\033[92mTest passed!\033[0m")
+    print(f"Execution time : {end_time - start_time:.6f} seconds")
