@@ -1,7 +1,7 @@
 #include "flash_attention_ascend.h"
 
 #include "../../../devices/ascend/common_ascend.h"
-#include <aclnnop/aclnn_flash_attention_score.h>
+#include "aclnnop/aclnn_prompt_flash_attention_v3.h"
 
 #include <cmath>
 #include <vector>
@@ -74,29 +74,32 @@ infiniStatus_t Descriptor::create(
         nullptr);
     size_t softmax_out_size = softmax_max->numel() * sizeof(float);
 
-    aclTensor *pse = nullptr;
-    aclTensor *drop_mask = nullptr;
-    aclTensor *padding = nullptr;
-    aclIntArray *prefix = nullptr;
+    aclTensor *pseShift = nullptr;
+    aclIntArray *actualSeqLengths = nullptr;
+    aclIntArray *actualSeqLengthsKv = nullptr;
+    aclTensor *deqScale1 = nullptr;
+    aclTensor *quantScale1 = nullptr;
+    aclTensor *deqScale2 = nullptr;
+    aclTensor *quantScale2 = nullptr;
+    aclTensor *quantOffset2 = nullptr;
+
     double scale = double(1) / std::sqrt(double(info.d_qk));
-    double keep_prob = 1;
     int64_t pre_tokens = info.q_len;
     int64_t next_tokens = info.kv_len - info.q_len;
     int64_t nh = int64_t(info.nh);
+    int64_t nkvh = int64_t(info.nkvh);
     int64_t inner_precise = 0;
     int64_t sparse_mode = info.has_mask == 1 ? 1 : 0;
     // int64_t sparse_mode = 0;
 
-    aclTensor *softmax_out = nullptr;
-
     std::vector<char> layout = {'B', 'S', 'N', 'D', 0};
     aclOpExecutor *executor;
-    CHECK_ACL(aclnnFlashAttentionScoreGetWorkspaceSize(
-        q->tensor, k->tensor, v->tensor, pse, drop_mask, padding,
+    CHECK_ACL(aclnnPromptFlashAttentionV3GetWorkspaceSize(
+        q->tensor, k->tensor, v->tensor, pseShift,
         info.has_mask ? mask->tensor : nullptr,
-        prefix, scale,
-        keep_prob, pre_tokens, next_tokens, nh, layout.data(), inner_precise,
-        sparse_mode, softmax_max->tensor, softmax_sum->tensor, softmax_out, out->tensor, &workspace_size, &executor));
+        actualSeqLengths, actualSeqLengthsKv, deqScale1, quantScale1, deqScale2, quantScale2, quantOffset2,
+        nh, scale, pre_tokens, next_tokens, layout.data(), nkvh,
+        sparse_mode, inner_precise, out->tensor, &workspace_size, &executor));
     CHECK_ACL(aclSetAclOpExecutorRepeatable(executor));
     size_t total_workspace_size = workspace_size + softmax_out_size * 2;
 
@@ -144,7 +147,7 @@ infiniStatus_t Descriptor::calculate(
     AclSetOutputTensorAddr(_opaque->executor, 0, _opaque->softmax_max->tensor, softmax_max);
     AclSetOutputTensorAddr(_opaque->executor, 1, _opaque->softmax_sum->tensor, softmax_sum);
     AclSetOutputTensorAddr(_opaque->executor, 2, _opaque->out->tensor, out);
-    CHECK_ACL(aclnnFlashAttentionScore(workspace, workspace_size, _opaque->executor, stream));
+    CHECK_ACL(aclnnPromptFlashAttentionV3(workspace, workspace_size, _opaque->executor, stream));
     return INFINI_STATUS_SUCCESS;
 }
 } // namespace op::flash_attention::ascend
