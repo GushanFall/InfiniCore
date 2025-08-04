@@ -3,6 +3,6 @@
 
 #include "../flash_attention.h"
 
-DESCRIPTOR(cuda)
+DESCRIPTOR(nvidia)
 
 #endif // __FLASH_ATTENTION_CUDA_H__

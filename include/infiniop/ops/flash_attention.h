@@ -15,7 +15,9 @@ __C __export infiniStatus_t infiniopCreateFlashAttentionDescriptor(
     infiniopTensorDescriptor_t mask_desc,
     infiniopAttentionMaskType_t mask_type);
 
-__C __export infiniStatus_t infiniopGetFlashAttentionWorkspaceSize(infiniopFlashAttentionDescriptor_t desc, size_t *size);
+__C __export infiniStatus_t infiniopGetFlashAttentionWorkspaceSize(
+    infiniopFlashAttentionDescriptor_t desc, 
+    size_t *size);
 
 __C __export infiniStatus_t infiniopFlashAttention(
     infiniopFlashAttentionDescriptor_t desc,
@@ -25,7 +27,7 @@ __C __export infiniStatus_t infiniopFlashAttention(
     const void *q,
     const void *k,
     const void *v,
-    void *mask,
+    const void *mask,
     void *stream);
 
 __C __export infiniStatus_t infiniopDestoryFlashAttentionDescriptor(infiniopFlashAttentionDescriptor_t desc);

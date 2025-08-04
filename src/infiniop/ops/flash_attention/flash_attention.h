@@ -14,9 +14,9 @@
         size_t _workspace_size;                                     \
                                                                     \
         Descriptor(                                                 \
-            Opaque *opaque,                                         \
             FlashAttentionInfo info,                                \
             size_t workspace_size_,                                 \
+            Opaque *opaque,                                         \
             infiniDevice_t device_type,                             \
             int device_id)                                          \
             : InfiniopDescriptor{device_type, device_id},           \
@@ -37,7 +37,7 @@
             infiniopTensorDescriptor_t k_desc,                      \
             infiniopTensorDescriptor_t v_desc,                      \
             infiniopTensorDescriptor_t mask_desc,                   \
-            infiniopTensorDescriptor_t mask_type);                  \
+            infiniopAttentionMaskType_t mask_type);                 \
                                                                     \
         infiniStatus_t calculate(                                   \
             void *workspace,                                        \

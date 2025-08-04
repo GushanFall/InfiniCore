@@ -2,8 +2,8 @@
 #include "../../handle.h"
 #include "infiniop/ops/flash_attention.h"
 
-#ifdef ENABLE_CUDA_API
-#include "cuda/flash_attention_cuda.cuh"
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API)
+#include "nvidia/flash_attention_nvidia.cuh"
 #endif
 
 __C infiniStatus_t infiniopCreateFlashAttentionDescriptor(
@@ -14,7 +14,7 @@ __C infiniStatus_t infiniopCreateFlashAttentionDescriptor(
     infiniopTensorDescriptor_t k_desc,
     infiniopTensorDescriptor_t v_desc,
     infiniopTensorDescriptor_t mask_desc,
-    infiniopTensorDescriptor_t mask_type) {
+    infiniopAttentionMaskType_t mask_type) {
 
 #define CREATE(CASE, NAMESPACE)                                                        \
     case CASE:                                                                         \
@@ -29,36 +29,30 @@ __C infiniStatus_t infiniopCreateFlashAttentionDescriptor(
             mask_type);
 
     switch (handle->device) {
-
-#ifdef ENABLE_CUDA_API
-        CREATE(INFINI_DEVICE_NVIDIA, cuda)
+#ifdef ENABLE_NVIDIA_API
+        CREATE(INFINI_DEVICE_NVIDIA, nvidia)
 #endif
-
-    default:
-        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-
-#undef CREATE
+    return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopGetFlashAttentionWorkspaceSize(infiniopFlashAttentionDescriptor_t desc, size_t *size) {
-
+__C infiniStatus_t infiniopGetFlashAttentionWorkspaceSize(
+    infiniopFlashAttentionDescriptor_t desc, 
+    size_t *size) {
 #define GET(CASE, NAMESPACE)                                                                           \
     case CASE:                                                                                         \
         *size = reinterpret_cast<op::flash_attention::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
-        return INFINI_STATUS_SUCCESS
+        return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
-        
-#ifdef ENABLE_CUDA_API
-        GET(INFINI_DEVICE_NVIDIA, cuda);
+#ifdef ENABLE_NVIDIA_API
+        GET(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
-
-    default:
-        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef GET
+
+    return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
 __C infiniStatus_t infiniopFlashAttention(
@@ -68,7 +62,7 @@ __C infiniStatus_t infiniopFlashAttention(
     const void *q,
     const void *k,
     const void *v,
-    void *mask,
+    const void *mask,
     void *stream) {
 
 #define CALCULATE(CASE, NAMESPACE)                                                        \
@@ -77,16 +71,14 @@ __C infiniStatus_t infiniopFlashAttention(
             ->calculate(workspace, workspace_size, out, q, k, v, mask, stream);
 
     switch (desc->device_type) {
-
-#ifdef ENABLE_CUDA_API
-        CALCULATE(INFINI_DEVICE_NVIDIA, cuda);
+#ifdef ENABLE_NVIDIA_API
+        CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
-
-    default:
-        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef CALCULATE
+
+    return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
 __C infiniStatus_t infiniopDestoryFlashAttentionDescriptor(infiniopFlashAttentionDescriptor_t desc) {
@@ -97,14 +89,12 @@ __C infiniStatus_t infiniopDestoryFlashAttentionDescriptor(infiniopFlashAttentio
         return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
-
-#ifdef ENABLE_CUDA_API
-        DESTROY(INFINI_DEVICE_NVIDIA, cuda);
+#ifdef ENABLE_NVIDIA_API
+        DESTROY(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
-
-    default:
-        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef DESTROY
+
+    return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
