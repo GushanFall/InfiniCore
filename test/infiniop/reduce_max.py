@@ -73,8 +73,9 @@ def test(
     input = TestTensor(shape_input, stride_input, dtype, device)
     output = TestTensor(shape_output, stride_output, dtype, device, mode="zeros")
     
-    # print(input.torch_tensor())
-        
+    print(input.torch_tensor())
+    print(hex(input.torch_tensor().data_ptr()))
+
     print(
         f"Testing ReduceMax on {InfiniDeviceNames[device]} with shape_input:{shape_input} stride_input:{stride_input} output_shape:{shape_output} stride_output:{stride_output} dim:{dim} dtype:{InfiniDtypeNames[dtype]}"
     )

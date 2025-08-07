@@ -25,7 +25,7 @@ infiniStatus_t reduceMax(
     const ReduceMaxInfo *info,
     Tdata *output,
     const Tdata *input) {
-
+        
     const auto input_shape_dim = info->input_shape_dim;
     const ptrdiff_t input_stride_outer = info->input_stride_outer;
     const ptrdiff_t input_stride_dim = info->input_stride_dim;

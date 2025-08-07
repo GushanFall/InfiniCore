@@ -12,6 +12,7 @@ INFINIOP_CUDA_KERNEL reduceMax(
     size_t input_shape_dim,
     ptrdiff_t input_stride_outer,
     ptrdiff_t input_stride_dim) {
+    printf("reduceMax input[0]: %f\n", input[0]); // Debugging output
     reduceMaxKernel<Tdata>(
         output, output_stride_outer,
         input, input_shape_dim, 
@@ -56,8 +57,10 @@ infiniStatus_t launchKernel(
     ptrdiff_t input_stride_outer, ptrdiff_t input_stride_dim,
     size_t outer_size, size_t inner_size,
     cudaStream_t stream) {
+    printf("launchKernel input[0]: %f\n", ((const float *)input)[0]); // Debugging output
 
-    dim3 block = dim3(BLOCK_SIZE);
+    // dim3 block = dim3(BLOCK_SIZE);
+    dim3 block = dim3(1);
     dim3 grid = dim3(
         (inner_size + block.x - 1) / block.x,
         outer_size
@@ -96,6 +99,7 @@ infiniStatus_t Descriptor::calculate(
     void *output,
     const void *input,
     void *stream) const {
+    printf("calculate input[0]: %f\n", ((const float *)input)[0]); // Debugging output
 
     if (workspace_size < _workspace_size) {
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
