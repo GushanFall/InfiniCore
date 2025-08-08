@@ -168,6 +168,44 @@ def conv_(lib):
 
 
 @OpRegister.operator
+def flash_attention_(lib):
+    lib.infiniopCreateFlashAttentionDescriptor.restype = c_int32
+    lib.infiniopCreateFlashAttentionDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_int32,
+    ]
+    
+    lib.infiniopGetFlashAttentionWorkspaceSize.restype = c_int32
+    lib.infiniopGetFlashAttentionWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopFlashAttention.restype = c_int32
+    lib.infiniopFlashAttention.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestoryFlashAttentionDescriptor.restype = c_int32
+    lib.infiniopDestoryFlashAttentionDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
 def gemm_(lib):
     lib.infiniopCreateGemmDescriptor.restype = c_int32
     lib.infiniopCreateGemmDescriptor.argtypes = [

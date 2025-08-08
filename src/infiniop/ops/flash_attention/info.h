@@ -33,7 +33,8 @@ public:
     ptrdiff_t mask_stride_sq;
     ptrdiff_t mask_stride_sk;
 
-    float *mask = nullptr;
+    void *mask;
+    bool is_masked;
 
     static utils::Result<FlashAttentionInfo> create(
         infiniopTensorDescriptor_t out_desc,
@@ -105,11 +106,13 @@ public:
 
         ptrdiff_t mask_stride_sq = seq_len_kv, 
                   mask_stride_sk = 1;
-        float *mask = nullptr;
+        void *mask = nullptr;
+        bool is_masked = true;
 
         if (mask_type == INFINIOP_ATTENTION_MASK_TYPE_NONE) {
             mask_stride_sq = 0;
             mask_stride_sk = 0;
+            is_masked = false;
         } else if (mask_type == INFINIOP_ATTENTION_MASK_TYPE_FULL) {
             auto mask_dtype = mask_desc->dtype();
             CHECK_DTYPE(mask_dtype, INFINI_DTYPE_F32);
@@ -142,7 +145,7 @@ public:
             qo_stride_b, qo_stride_s, qo_stride_n, qo_stride_d,
             kv_stride_b, kv_stride_s, kv_stride_n, kv_stride_d,
             mask_stride_sq, mask_stride_sk,
-            mask,
+            mask, is_masked,
         });
     }
 };

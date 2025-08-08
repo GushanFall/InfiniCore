@@ -1,5 +1,5 @@
-#ifndef __FLASH_ATTENTION_H__
-#define __FLASH_ATTENTION_H__
+#ifndef FLASH_ATTENTION_H
+#define FLASH_ATTENTION_H
 
 #include "../../operator.h"
 #include "info.h"
@@ -51,4 +51,4 @@
     };                                                              \
     }
 
-#endif // __FLASH_ATTENTION_H__
+#endif // FLASH_ATTENTION_H

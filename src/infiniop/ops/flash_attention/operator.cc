@@ -29,11 +29,16 @@ __C infiniStatus_t infiniopCreateFlashAttentionDescriptor(
             mask_type);
 
     switch (handle->device) {
+
 #ifdef ENABLE_NVIDIA_API
         CREATE(INFINI_DEVICE_NVIDIA, nvidia)
 #endif
+    
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
+
+#undef CREATE
 }
 
 __C infiniStatus_t infiniopGetFlashAttentionWorkspaceSize(
@@ -45,15 +50,18 @@ __C infiniStatus_t infiniopGetFlashAttentionWorkspaceSize(
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
+
 #ifdef ENABLE_NVIDIA_API
         GET(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
+
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef GET
-
-    return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
+
 
 __C infiniStatus_t infiniopFlashAttention(
     infiniopFlashAttentionDescriptor_t desc,
@@ -64,7 +72,7 @@ __C infiniStatus_t infiniopFlashAttention(
     const void *v,
     const void *mask,
     void *stream) {
-
+        
 #define CALCULATE(CASE, NAMESPACE)                                                        \
     case CASE:                                                                            \
         return reinterpret_cast<op::flash_attention::NAMESPACE::Descriptor *>(desc)       \
@@ -74,11 +82,12 @@ __C infiniStatus_t infiniopFlashAttention(
 #ifdef ENABLE_NVIDIA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
+    
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef CALCULATE
-
-    return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
 __C infiniStatus_t infiniopDestoryFlashAttentionDescriptor(infiniopFlashAttentionDescriptor_t desc) {
@@ -92,9 +101,10 @@ __C infiniStatus_t infiniopDestoryFlashAttentionDescriptor(infiniopFlashAttentio
 #ifdef ENABLE_NVIDIA_API
         DESTROY(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
+    
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef DESTROY
-
-    return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
