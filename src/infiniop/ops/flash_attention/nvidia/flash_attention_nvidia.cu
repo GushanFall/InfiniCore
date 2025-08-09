@@ -78,7 +78,7 @@ infiniStatus_t launchKernel(
     ptrdiff_t kv_stride_b, ptrdiff_t kv_stride_s, ptrdiff_t kv_stride_n,
     infiniDtype_t dtype,
     cudaStream_t stream) {
-
+        
     dim3 grid_dim(batch_size, nums_head_q);
     dim3 block_dim(B_c);
 

@@ -73,36 +73,37 @@ public:
         size_t seq_len_kv = kv_shape[ndim - 3];
         size_t num_heads_kv = kv_shape[ndim - 2];
         size_t head_dim_kv = kv_shape[ndim - 1];
-
-        size_t batch_size = batch_size_q;
-        size_t head_dim = head_dim_q;
-
+        
         ptrdiff_t qo_stride_b = 0,
-                  qo_stride_s = out_desc->stride(ndim - 3),
-                  qo_stride_n = out_desc->stride(ndim - 2),
-                  qo_stride_d = out_desc->stride(ndim - 1);
+        qo_stride_s = out_desc->stride(ndim - 3),
+        qo_stride_n = out_desc->stride(ndim - 2),
+        qo_stride_d = out_desc->stride(ndim - 1);
         
         ptrdiff_t kv_stride_b = 0,
-                  kv_stride_s = k_desc->stride(ndim - 3),
-                  kv_stride_n = k_desc->stride(ndim - 2),
-                  kv_stride_d = k_desc->stride(ndim - 1);
-                  
+        kv_stride_s = k_desc->stride(ndim - 3),
+        kv_stride_n = k_desc->stride(ndim - 2),
+        kv_stride_d = k_desc->stride(ndim - 1);
+        
         if (ndim == 4) {
             qo_stride_b = out_desc->stride(0);
             kv_stride_b = k_desc->stride(0);
             batch_size_q = q_shape[0];
             batch_size_kv = kv_shape[0];
         }
+        
         // batch_size 和 head_dim 是否一致
         CHECK_OR_RETURN(batch_size_q == batch_size_kv, INFINI_STATUS_BAD_TENSOR_SHAPE);
         CHECK_OR_RETURN(head_dim_q == head_dim_kv, INFINI_STATUS_BAD_TENSOR_SHAPE);
         // 多头注意力是否整除
         CHECK_OR_RETURN(num_heads_q % num_heads_kv == 0, INFINI_STATUS_BAD_TENSOR_SHAPE);
-
+        
         CHECK_OR_RETURN(out_desc->isContiguous(), INFINI_STATUS_BAD_TENSOR_STRIDES);
         CHECK_OR_RETURN(q_desc->isContiguous(), INFINI_STATUS_BAD_TENSOR_STRIDES);
         CHECK_OR_RETURN(k_desc->isContiguous(), INFINI_STATUS_BAD_TENSOR_STRIDES);
         CHECK_OR_RETURN(v_desc->isContiguous(), INFINI_STATUS_BAD_TENSOR_STRIDES);
+        
+        size_t batch_size = batch_size_q;
+        size_t head_dim = head_dim_q;
 
         ptrdiff_t mask_stride_sq = seq_len_kv, 
                   mask_stride_sk = 1;

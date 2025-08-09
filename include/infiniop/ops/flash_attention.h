@@ -30,6 +30,6 @@ __C __export infiniStatus_t infiniopFlashAttention(
     const void *mask,
     void *stream);
 
-__C __export infiniStatus_t infiniopDestoryFlashAttentionDescriptor(infiniopFlashAttentionDescriptor_t desc);
+__C __export infiniStatus_t infiniopDestroyFlashAttentionDescriptor(infiniopFlashAttentionDescriptor_t desc);
 
 #endif

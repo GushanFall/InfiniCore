@@ -90,7 +90,7 @@ __C infiniStatus_t infiniopFlashAttention(
 #undef CALCULATE
 }
 
-__C infiniStatus_t infiniopDestoryFlashAttentionDescriptor(infiniopFlashAttentionDescriptor_t desc) {
+__C infiniStatus_t infiniopDestroyFlashAttentionDescriptor(infiniopFlashAttentionDescriptor_t desc) {
 
 #define DESTROY(CASE, NAMESPACE)                                                         \
     case CASE:                                                                           \

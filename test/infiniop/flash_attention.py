@@ -32,20 +32,24 @@ _TEST_CASES = [
     #     0,                # Mask type
     # ),
     (
-        (1, 2, 1, 4),                    # Output shape
-        (1, 2, 1, 4),                    # Query shape
-        (1, 2, 1, 4),                    # Key shape
-        (1, 2, 1, 4),                    # Value shape
+        (4, 4, 1, 2),                    # Output shape
+        (4, 4, 1, 2),                    # Query shape
+        (4, 4, 1, 2),                    # Key shape
+        (4, 4, 1, 2),                    # Value shape
         infiniopAttentionMaskType.NONE,  # Mask type
     ),
 ]
 
-_TENSOR_DTYPES = [InfiniDtype.F32]
+_TENSOR_DTYPES = [
+    InfiniDtype.F32,
+    InfiniDtype.F16,
+    InfiniDtype.BF16,
+]
 
 _TOLERANCE_MAP = {
-    InfiniDtype.F16: {"atol": 1e-4, "rtol": 1e-2},
-    InfiniDtype.F32: {"atol": 1e-5, "rtol": 1e-3},
-    InfiniDtype.BF16: {"atol": 0, "rtol": 5e-2},
+    InfiniDtype.F16: {"atol": 1e-3, "rtol": 1e-3},
+    InfiniDtype.F32: {"atol": 1e-7, "rtol": 1e-7},
+    InfiniDtype.BF16: {"atol": 1e-3, "rtol": 1e-3},
 }
 
 DEBUG = False
@@ -105,35 +109,54 @@ def test(
     sync=None,
 ):
     print(
-        f"Testing Attention on {InfiniDeviceNames[device]} with out:{out_shape} q:{q_shape} k:{k_shape} v:{v_shape} dtype:{dtype}"
+        f"Testing Attention on {InfiniDeviceNames[device]} with out:{out_shape} q:{q_shape} k:{k_shape} v:{v_shape} dtype:{InfiniDtypeNames[dtype]} mask_type:{InfiniopAttentionMaskTypeNames[mask_type]}"
     )
-    q = torch.tensor(
-        [[[[1.0, 2.0, 3.0, 4.0]], 
-        [[1.0, 3.0, 2.0, 4.0]]]]
-    )
+    # q = torch.tensor(
+    #     [[[[ 0.6657, -0.4559]],
 
-    k = torch.tensor(
-        [[[[3.0, 2.0, 1.0, 4.0]], 
-        [[2.0, 4.0, 3.0, 1.0]]]]
-    )
+    #         [[-0.1447,  0.8558]]],
 
-    v = torch.tensor(
-        [[[[4.0, 3.0, 2.0, 1.0]], 
-        [[2.0, 1.0, 3.0, 4.0]]]]
-    )
+
+    #         [[[-2.2486, -2.0478]],
+
+    #         [[-0.0545,  0.2759]]]]
+    # )
+
+    # k = torch.tensor(
+    #     [[[[ 0.2504,  0.1003]],
+
+    #         [[ 0.5749,  0.4408]]],
+
+
+    #         [[[-0.2046,  0.0526]],
+
+    #         [[ 0.4541, -0.5347]]]]
+    # )
+
+    # v = torch.tensor(
+    #     [[[[-0.3163, -1.0155]],
+
+    #         [[ 0.8147, -0.9172]]],
+
+
+    #         [[[-2.9917, -0.4317]],
+
+    #         [[-0.6886, -0.8976]]]]
+    # )
+    # q = TestTensor.from_torch(q, dtype, device)
+    # k = TestTensor.from_torch(k, dtype, device)
+    # v = TestTensor.from_torch(v, dtype, device)
     
     out = TestTensor(out_shape, None, dtype, device, mode="zeros")
-    # q = TestTensor(q_shape, None, dtype, device, scale=0.1)
-    # k = TestTensor(k_shape, None, dtype, device, scale=0.1)
-    # v = TestTensor(v_shape, None, dtype, device, scale=0.1)
-    q = TestTensor.from_torch(q, dtype, device)
-    k = TestTensor.from_torch(k, dtype, device)
-    v = TestTensor.from_torch(v, dtype, device)
+    
+    q = TestTensor(q_shape, None, dtype, device, scale=0.1)
+    k = TestTensor(k_shape, None, dtype, device, scale=0.1)
+    v = TestTensor(v_shape, None, dtype, device, scale=0.1)
     
     
-    print(f"Torch-Q:\n{q.torch_tensor()}")
-    print(f"Torch-K:\n{k.torch_tensor()}")
-    print(f"Torch-V:\n{v.torch_tensor()}")
+    # print(f"Torch-Q:\n{q.torch_tensor()}")
+    # print(f"Torch-K:\n{k.torch_tensor()}")
+    # print(f"Torch-V:\n{v.torch_tensor()}")
     
     mask = causal_mask((q_shape[-3], k_shape[-3]))
     mask = TestTensor.from_torch(mask, InfiniDtype.F32, device)
@@ -151,9 +174,7 @@ def test(
     
     if sync is not None:
         sync()
-    
-    print(LIBINFINIOP)
-    
+        
     descriptor = infiniopOperatorDescriptor_t()
     check_error(
         LIBINFINIOP.infiniopCreateFlashAttentionDescriptor(

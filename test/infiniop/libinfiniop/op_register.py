@@ -199,8 +199,8 @@ def flash_attention_(lib):
         c_void_p,
     ]
 
-    lib.infiniopDestoryFlashAttentionDescriptor.restype = c_int32
-    lib.infiniopDestoryFlashAttentionDescriptor.argtypes = [
+    lib.infiniopDestroyFlashAttentionDescriptor.restype = c_int32
+    lib.infiniopDestroyFlashAttentionDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
 
