@@ -1,0 +1,219 @@
+#include "../../../devices/bang/common_bang.h"
+#include "../../../reduce/bang/reduce_bang.h"
+#include "causal_softmax_bang.h"
+
+__nram__ char nram_buffer[NRAM_MAX_SIZE];
+const int SRC_MAX_SIZE = NRAM_MAX_SIZE / 4;
+
+template <typename T>
+__mlu_global__ void causalSoftmax(
+    T *output, const T *input, 
+    size_t batch_size, size_t height, size_t width,
+    ptrdiff_t output_stride_b, ptrdiff_t output_stride_i, ptrdiff_t output_stride_j,
+    ptrdiff_t input_stride_b, ptrdiff_t input_stride_i, ptrdiff_t input_stride_j,
+    int norm_dim_size) {
+    // Calculate problem dimensions
+    int batch_volume = batch_size * height;
+    int vector_size = width;
+
+    // Determine maximum batch size for NRAM operations
+    int max_batch_size = (vector_size >= SRC_MAX_SIZE / sizeof(T) ? SRC_MAX_SIZE / sizeof(T) : norm_dim_size);
+    constexpr int reduce_buffer_size = 128 / sizeof(float);
+
+    // Task distribution across cores
+    int remaining_tasks = batch_volume % taskDim;
+    int base_tasks_per_core = batch_volume / taskDim;
+    int actual_tasks = base_tasks_per_core + (taskId < remaining_tasks ? 1 : 0);
+    int task_start_idx = (taskId < remaining_tasks ? taskId * base_tasks_per_core + taskId : taskId * base_tasks_per_core + remaining_tasks);
+
+    // NRAM buffer allocation
+    char *input_buffer = nram_buffer + reduce_buffer_size * sizeof(float);
+
+    float *reduction_result = (float *)nram_buffer;
+    T *input_cache = (T *)input_buffer;
+
+    // Process vectors assigned to current core
+    int processed_tasks = 0;
+    while (processed_tasks < actual_tasks) {
+        int current_index = task_start_idx + processed_tasks;
+
+        int current_batch = current_index / height;
+        int current_height = current_index % height;
+
+        // Calculate memory offsets for current task
+        int input_offset = current_batch * input_stride_b + current_height * input_stride_i;
+        int output_offset = current_batch * output_stride_b + current_height * output_stride_i;
+
+        // Causal mask
+        size_t processed_elements = vector_size - height + 1 + current_height;
+        while (processed_elements < vector_size) {
+            size_t current_batch = std::min((size_t)max_batch_size, vector_size - processed_elements);
+
+            __bang_write_zero(input_cache, current_batch);
+
+            // Store
+            __memcpy(output + output_offset + processed_elements, input_cache, current_batch * sizeof(T), NRAM2GDRAM);
+
+            processed_elements += current_batch;
+        }
+
+        // Reduce Max
+        T max_val;
+        op::common_bang::reduce_op::max_kernel<T>(
+            &max_val, input + input_offset, vector_size - height + 1 + current_height);
+
+        // Process vector in chunks
+        processed_elements = 0;
+        while (processed_elements < vector_size - height + 1 + current_height) {
+            size_t current_batch = std::min((size_t)max_batch_size, vector_size - height + 1 + current_height - processed_elements);
+
+            // Load data
+            __memcpy(input_cache, input + input_offset + processed_elements, current_batch * sizeof(T), GDRAM2NRAM);
+
+            // Exp
+            __bang_sub_scalar(input_cache, input_cache, max_val, current_batch);
+            __bang_active_exp(input_cache, input_cache, current_batch);
+
+            // Store
+            __memcpy(output + output_offset + processed_elements, input_cache, current_batch * sizeof(T), NRAM2GDRAM);
+
+            processed_elements += current_batch;
+        }
+
+        // Reduce Sum
+        __bang_write_zero(reduction_result, reduce_buffer_size);
+        float sum = op::common_bang::reduce_op::sum<T>(
+            output + output_offset, input_cache, reduction_result, vector_size, max_batch_size);
+        float inv_sum = 1.0f / sum;
+
+        // Process vector in chunks
+        processed_elements = 0;
+        while (processed_elements < vector_size - height + 1 + current_height) {
+            size_t current_batch = std::min((size_t)max_batch_size, vector_size - height + 1 + current_height - processed_elements);
+
+            // Load data
+            __memcpy(input_cache, output + output_offset + processed_elements, current_batch * sizeof(T), GDRAM2NRAM);
+
+            // Normalize
+            __bang_mul_scalar(input_cache, input_cache, inv_sum, current_batch);
+
+            // Store results
+            __memcpy(output + output_offset + processed_elements, input_cache, current_batch * sizeof(T), NRAM2GDRAM);
+
+            processed_elements += current_batch;
+        }
+
+        processed_tasks++;
+    }
+}
+
+template <typename T>
+void causalSoftmaxUnion(
+    void *workspace, int core_per_cluster, int cluster_count, cnrtQueue_t queue,
+    void *y, const void *x,
+    size_t batch_size, size_t seq_len, size_t total_seq_len,
+    ptrdiff_t y_stride_b, ptrdiff_t y_stride_i, ptrdiff_t y_stride_j,
+    ptrdiff_t x_stride_b, ptrdiff_t x_stride_i, ptrdiff_t x_stride_j) {
+
+    cnrtDim3_t kernel_dim;
+    cnrtFunctionType_t kernel_type;
+
+    // Configure kernel dimensions
+    kernel_dim.x = core_per_cluster;
+    kernel_dim.y = cluster_count;
+    kernel_dim.z = 1;
+    kernel_type = cnrtFuncTypeUnion1;
+
+    int dimsize = total_seq_len;         // Length of operation dimension
+    int dim_s;
+    float mi = log2(dimsize);
+    if (floor(mi) == mi) {
+        dim_s = dimsize;
+    } else {
+        dim_s = pow(2, floor(mi) + 1);
+    }
+    constexpr int reduce_num = 128 / sizeof(float);
+    if (dim_s < reduce_num) {
+        dim_s = reduce_num; // Force dim_s >= reduce_num
+    }
+
+    // Prepare device pointers
+    auto y_ = reinterpret_cast<T *>(y);
+    auto x_ = reinterpret_cast<const T *>(x);
+
+    // Launch kernel
+    causalSoftmax<T><<<kernel_dim, kernel_type, queue>>>(
+        y_, x_,
+        batch_size, seq_len, total_seq_len,
+        y_stride_b, y_stride_i, y_stride_j,
+        x_stride_b, x_stride_i, x_stride_j,
+        dim_s);
+    
+    cnrtQueueSync(queue);
+}
+
+namespace op::causal_softmax::bang {
+
+struct Descriptor::Opaque {
+    std::shared_ptr<device::bang::Handle::Internal> internal;
+};
+
+Descriptor::~Descriptor() {
+    delete _opaque;
+}
+
+infiniStatus_t Descriptor::create(
+    infiniopHandle_t handle_,
+    Descriptor **desc_ptr,
+    infiniopTensorDescriptor_t y_desc,
+    infiniopTensorDescriptor_t x_desc) {
+    auto handle = reinterpret_cast<device::bang::cambricon::Handle *>(handle_);
+
+    auto result = CausalSoftmaxInfo::create(y_desc, x_desc);
+    CHECK_RESULT(result);
+    auto info = result.take();
+
+    *desc_ptr = new Descriptor(
+        new Descriptor::Opaque{static_cast<device::bang::Handle *>(handle)->internal()},
+        info,
+        0,
+        handle->device,
+        handle->device_id);
+
+    return INFINI_STATUS_SUCCESS;
+}
+
+infiniStatus_t Descriptor::calculate(
+    void *workspace, size_t workspace_size,
+    void *y, const void *x,
+    void *stream) const {
+
+    auto queue = reinterpret_cast<cnrtQueue_t>(stream);
+    int core_per_cluster = _opaque->internal->getCorePerCluster();
+    int cluster_count = _opaque->internal->getClusterCount();
+
+    // Dispatch based on data types
+    if (_info.dtype == INFINI_DTYPE_F16) {
+        causalSoftmaxUnion<half>(
+            workspace, core_per_cluster, cluster_count, queue,
+            y, x,
+            _info.batch_size, _info.seq_len, _info.total_seq_len,
+            _info.y_stride_b, _info.y_stride_i, _info.y_stride_j,
+            _info.x_stride_b, _info.x_stride_i, _info.x_stride_j);
+        return INFINI_STATUS_SUCCESS;
+    } else if (_info.dtype == INFINI_DTYPE_F32) {
+        causalSoftmaxUnion<float>(
+            workspace, core_per_cluster, cluster_count, queue,
+            y, x,
+            _info.batch_size, _info.seq_len, _info.total_seq_len,
+            _info.y_stride_b, _info.y_stride_i, _info.y_stride_j,
+            _info.x_stride_b, _info.x_stride_i, _info.x_stride_j);
+        return INFINI_STATUS_SUCCESS;
+    } else {
+        return INFINI_STATUS_BAD_TENSOR_DTYPE;
+    }
+
+    return INFINI_STATUS_SUCCESS;
+}
+
+} // namespace op::causal_softmax::bang

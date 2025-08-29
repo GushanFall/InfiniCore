@@ -143,7 +143,7 @@ __mlu_func__ float sumSquaredBatched(const T *source, T *src, float *dst, int nu
 }
 
 template <typename T>
-__mlu_entry__ void max_kernel(T *result, const T *data, size_t len) {
+__mlu_func__ void max_kernel(T *result, const T *data, size_t len) {
     *result = data[0];
     for (size_t i = 1; i < len; i++) {
         if (data[i] > *result) {

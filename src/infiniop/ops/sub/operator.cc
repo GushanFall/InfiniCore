@@ -8,6 +8,9 @@
 #ifdef ENABLE_CUDA_API
 #include "cuda/sub_cuda.cuh"
 #endif
+#ifdef ENABLE_CAMBRICON_API
+#include "bang/sub_bang.h"
+#endif
 
 __C infiniStatus_t infiniopCreateSubDescriptor(
     infiniopHandle_t handle,
@@ -33,6 +36,9 @@ __C infiniStatus_t infiniopCreateSubDescriptor(
 #ifdef ENABLE_CUDA_API
         CREATE(INFINI_DEVICE_NVIDIA, cuda);
 #endif
+#ifdef ENABLE_CAMBRICON_API
+        CREATE(INFINI_DEVICE_CAMBRICON, bang);
+#endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -50,14 +56,19 @@ __C infiniStatus_t infiniopGetSubWorkspaceSize(infiniopSubDescriptor_t desc, siz
 
     switch (desc->device_type) {
 #ifdef ENABLE_CPU_API
-        GET(INFINI_DEVICE_CPU, cpu)
+        GET(INFINI_DEVICE_CPU, cpu);
 #endif
 #ifdef ENABLE_CUDA_API
-        GET(INFINI_DEVICE_NVIDIA, cuda)
+        GET(INFINI_DEVICE_NVIDIA, cuda);
 #endif
+#ifdef ENABLE_CAMBRICON_API
+        GET(INFINI_DEVICE_CAMBRICON, bang);
+#endif
+
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
+
 #undef GET
 
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -85,6 +96,9 @@ __C infiniStatus_t infiniopSub(
 #ifdef ENABLE_CUDA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, cuda);
 #endif
+#ifdef ENABLE_CAMBRICON_API
+        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
+#endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -108,6 +122,9 @@ infiniopDestroySubDescriptor(infiniopSubDescriptor_t desc) {
 #endif
 #ifdef ENABLE_CUDA_API
         DELETE(INFINI_DEVICE_NVIDIA, cuda);
+#endif
+#ifdef ENABLE_CAMBRICON_API
+        DELETE(INFINI_DEVICE_CAMBRICON, bang);
 #endif
 
     default:
