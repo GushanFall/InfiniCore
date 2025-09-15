@@ -2,6 +2,9 @@
 #include "../../handle.h"
 #include "infiniop/ops/flash_attention.h"
 
+#ifdef ENABLE_ASCEND_API
+#include "ascend/flash_attention_ascend.h"
+#endif
 #ifdef ENABLE_CPU_API
 #include "cpu/flash_attention_cpu.h"
 #endif
@@ -38,6 +41,9 @@ __C infiniStatus_t infiniopCreateFlashAttentionDescriptor(
 
     switch (handle->device) {
 
+#ifdef ENABLE_ASCEND_API
+        CREATE(INFINI_DEVICE_ASCEND, ascend);
+#endif
 #ifdef ENABLE_CPU_API
         CREATE(INFINI_DEVICE_CPU, cpu);
 #endif
@@ -68,6 +74,9 @@ __C infiniStatus_t infiniopGetFlashAttentionWorkspaceSize(
 
     switch (desc->device_type) {
 
+#ifdef ENABLE_ASCEND_API
+        GET(INFINI_DEVICE_ASCEND, ascend);
+#endif
 #ifdef ENABLE_CPU_API
         GET(INFINI_DEVICE_CPU, cpu);
 #endif
@@ -106,6 +115,9 @@ __C infiniStatus_t infiniopFlashAttention(
 
     switch (desc->device_type) {
 
+#ifdef ENABLE_ASCEND_API
+        CALCULATE(INFINI_DEVICE_ASCEND, ascend);
+#endif
 #ifdef ENABLE_CPU_API
         CALCULATE(INFINI_DEVICE_CPU, cpu);
 #endif
@@ -135,6 +147,9 @@ __C infiniStatus_t infiniopDestroyFlashAttentionDescriptor(infiniopFlashAttentio
 
     switch (desc->device_type) {
 
+#ifdef ENABLE_ASCEND_API
+        DESTROY(INFINI_DEVICE_ASCEND, ascend);
+#endif
 #ifdef ENABLE_CPU_API
         DESTROY(INFINI_DEVICE_CPU, cpu);
 #endif
